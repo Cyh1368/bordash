@@ -267,7 +267,7 @@ button:hover {
   border-radius: 8px;
   background: var(--panel-soft);
   padding: 9px;
-  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+  transition: opacity 750ms ease, transform 750ms ease, box-shadow 140ms ease, border-color 140ms ease;
 }
 
 .task-chip:hover {
@@ -278,6 +278,19 @@ button:hover {
 
 .task-chip.dragging {
   opacity: 0.55;
+}
+
+.task-chip.completing-static,
+tr.completing-static {
+  opacity: 1;
+  transform: none;
+}
+
+.task-chip.completing-exit,
+tr.completing-exit {
+  opacity: 0;
+  transform: translateX(18px) scale(0.98);
+  transition-duration: 250ms;
 }
 
 .task-check {
@@ -343,6 +356,52 @@ button:hover {
   margin-top: 30px;
 }
 
+.completed-section {
+  margin-top: 24px;
+}
+
+.completed-section summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 1.2rem;
+  font-weight: 700;
+  list-style: none;
+}
+
+.completed-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.completed-section summary::before {
+  content: ">";
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+  transition: transform 160ms ease;
+}
+
+.completed-section details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.completed-section summary span:first-child {
+  margin-right: auto;
+}
+
+.completed-section summary span:last-child {
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
 .sort-controls {
   display: flex;
   flex-wrap: wrap;
@@ -384,6 +443,10 @@ td {
   padding: 10px;
   text-align: left;
   vertical-align: middle;
+}
+
+tr {
+  transition: opacity 750ms ease, transform 750ms ease;
 }
 
 th {
@@ -469,6 +532,13 @@ td:first-child .task-check {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.completed-task-name {
+  color: var(--done);
+  font-weight: 700;
+  text-decoration: line-through;
+  overflow-wrap: anywhere;
 }
 
 .empty-state {

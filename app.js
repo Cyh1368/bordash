@@ -1,6 +1,8 @@
 const board = document.querySelector("#project-board");
 const tableBody = document.querySelector("#task-table");
+const completedTableBody = document.querySelector("#completed-table");
 const taskCount = document.querySelector("#task-count");
+const completedCount = document.querySelector("#completed-count");
 const projectTemplate = document.querySelector("#project-template");
 const sortButtons = document.querySelectorAll(".sort-button");
 const projectAdd = document.querySelector("#project-add");
@@ -15,6 +17,9 @@ let tasks = [];
 let projects = [];
 let sortKey = "project";
 let reorganizing = false;
+const completingTasks = new Set();
+const exitingTasks = new Set();
+const completionTimers = new Map();
 
 const defaultProjects = ["Product", "Design", "Engineering"];
 
@@ -52,6 +57,14 @@ function makeDateLabel(dueDate, options = {}) {
 function normalizedProject(project) {
   const trimmed = project.trim();
   return trimmed || "Inbox";
+}
+
+function activeTasks() {
+  return tasks.filter((task) => !task.done);
+}
+
+function completedTasks() {
+  return tasks.filter((task) => task.done);
 }
 
 async function loadTasks() {
@@ -126,6 +139,44 @@ async function updateTask(id, patch) {
   render();
 }
 
+function completeTask(id) {
+  if (completingTasks.has(id)) return;
+  completingTasks.add(id);
+  document.querySelectorAll(`[data-task-id="${id}"]`).forEach((element) => {
+    element.classList.add("completing-static");
+    element.querySelectorAll(".task-check, .task-title").forEach((child) => child.classList.add("done"));
+  });
+
+  const exitTimer = window.setTimeout(() => {
+    exitingTasks.add(id);
+    document.querySelectorAll(`[data-task-id="${id}"]`).forEach((element) => {
+      element.classList.add("completing-exit");
+    });
+  }, 750);
+
+  const completeTimer = window.setTimeout(async () => {
+    completionTimers.delete(id);
+    completingTasks.delete(id);
+    exitingTasks.delete(id);
+    tasks = tasks.map((task) =>
+      task.id === id ? { ...task, done: true, completedAt: new Date().toISOString() } : task
+    );
+    await saveTasks();
+    render();
+  }, 1000);
+  completionTimers.set(id, [exitTimer, completeTimer]);
+}
+
+async function restoreTask(id) {
+  if (completionTimers.has(id)) {
+    completionTimers.get(id).forEach((timer) => window.clearTimeout(timer));
+    completionTimers.delete(id);
+  }
+  completingTasks.delete(id);
+  exitingTasks.delete(id);
+  await updateTask(id, { done: false, completedAt: "" });
+}
+
 async function moveTask(id, project, beforeId = "") {
   const movedTask = tasks.find((task) => task.id === id);
   if (!movedTask) return;
@@ -176,7 +227,7 @@ function projectNames() {
 }
 
 function sortedTasks() {
-  return [...tasks].sort((a, b) => {
+  return activeTasks().sort((a, b) => {
     if (sortKey === "project") {
       const firstIndex = projects.indexOf(normalizedProject(a.project));
       const secondIndex = projects.indexOf(normalizedProject(b.project));
@@ -191,31 +242,43 @@ function sortedTasks() {
   });
 }
 
+function sortedCompletedTasks() {
+  return completedTasks().sort((a, b) => {
+    const first = String(a.completedAt || "");
+    const second = String(b.completedAt || "");
+    return second.localeCompare(first) || a.name.localeCompare(b.name);
+  });
+}
+
 function makeTaskChip(task) {
   const chip = document.createElement("div");
   chip.className = "task-chip";
   chip.draggable = true;
   chip.dataset.id = task.id;
+  chip.dataset.taskId = task.id;
 
   const check = document.createElement("button");
   check.type = "button";
-  check.className = `task-check${task.done ? " done" : ""}`;
+  check.className = `task-check${task.done || completingTasks.has(task.id) ? " done" : ""}`;
   check.textContent = "✓";
-  check.setAttribute("aria-label", task.done ? "Mark incomplete" : "Mark complete");
-  check.addEventListener("click", () => updateTask(task.id, { done: !task.done }));
+  check.setAttribute("aria-label", "Mark complete");
+  check.addEventListener("click", () => completeTask(task.id));
 
   const title = document.createElement("div");
-  title.className = `task-title ${dateState(task.dueDate, task.done)}${task.done ? " done" : ""}`;
+  title.className = `task-title ${dateState(task.dueDate, task.done)}${task.done || completingTasks.has(task.id) ? " done" : ""}`;
   title.textContent = task.name;
 
   const date = makeDateLabel(task.dueDate, { blankWhenMissing: true });
 
   chip.addEventListener("dragstart", (event) => {
+    if (completingTasks.has(task.id)) return;
     chip.classList.add("dragging");
     event.dataTransfer.setData("text/plain", task.id);
     event.dataTransfer.effectAllowed = "move";
   });
   chip.addEventListener("dragend", () => chip.classList.remove("dragging"));
+  chip.classList.toggle("completing-static", completingTasks.has(task.id));
+  chip.classList.toggle("completing-exit", exitingTasks.has(task.id));
 
   chip.append(check, title, date);
   return chip;
@@ -283,7 +346,7 @@ function renderBoard() {
     const list = clone.querySelector(".project-list");
     const form = clone.querySelector(".project-add");
     const projectTasks = tasks
-      .filter((task) => normalizedProject(task.project) === project)
+      .filter((task) => !task.done && normalizedProject(task.project) === project)
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
     heading.textContent = project;
@@ -316,7 +379,9 @@ function renderBoard() {
       event.dataTransfer.setData("application/x-project", project);
       event.dataTransfer.effectAllowed = "move";
     });
-    card.addEventListener("dragend", () => card.classList.remove("project-dragging"));
+    card.addEventListener("dragend", () => {
+      card.classList.remove("project-dragging");
+    });
 
     list.addEventListener("dragover", (event) => {
       event.preventDefault();
@@ -372,14 +437,15 @@ function renderTable() {
 
   sortedTasks().forEach((task) => {
     const row = document.createElement("tr");
+    row.dataset.taskId = task.id;
 
     const statusCell = document.createElement("td");
     const check = document.createElement("button");
     check.type = "button";
-    check.className = `task-check${task.done ? " done" : ""}`;
+    check.className = `task-check${task.done || completingTasks.has(task.id) ? " done" : ""}`;
     check.textContent = "✓";
-    check.setAttribute("aria-label", task.done ? "Mark incomplete" : "Mark complete");
-    check.addEventListener("click", () => updateTask(task.id, { done: !task.done }));
+    check.setAttribute("aria-label", "Mark complete");
+    check.addEventListener("click", () => completeTask(task.id));
     statusCell.append(check);
 
     const nameCell = document.createElement("td");
@@ -409,10 +475,12 @@ function renderTable() {
     actionCell.append(deleteButton);
 
     row.append(statusCell, nameCell, dateCell, actionCell);
+    row.classList.toggle("completing-static", completingTasks.has(task.id));
+    row.classList.toggle("completing-exit", exitingTasks.has(task.id));
     tableBody.append(row);
   });
 
-  if (!tasks.length) {
+  if (!activeTasks().length) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 4;
@@ -423,13 +491,68 @@ function renderTable() {
   }
 }
 
+function renderCompletedTable() {
+  completedTableBody.replaceChildren();
+
+  sortedCompletedTasks().forEach((task) => {
+    const row = document.createElement("tr");
+
+    const statusCell = document.createElement("td");
+    const check = document.createElement("button");
+    check.type = "button";
+    check.className = "task-check done";
+    check.textContent = "✓";
+    check.setAttribute("aria-label", `Move ${task.name} back to active tasks`);
+    check.addEventListener("click", () => restoreTask(task.id));
+    statusCell.append(check);
+
+    const nameCell = document.createElement("td");
+    const taskLine = document.createElement("div");
+    taskLine.className = "task-table-name";
+    const title = document.createElement("span");
+    title.className = "completed-task-name";
+    title.textContent = task.name;
+    taskLine.append(title, projectTag(task.project));
+    nameCell.append(taskLine);
+
+    const dateCell = document.createElement("td");
+    dateCell.append(makeDateLabel(task.dueDate));
+
+    const actionCell = document.createElement("td");
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "table-action";
+    deleteButton.textContent = "X";
+    deleteButton.setAttribute("aria-label", `Delete ${task.name}`);
+    deleteButton.addEventListener("click", () => deleteTask(task.id));
+    actionCell.append(deleteButton);
+
+    row.append(statusCell, nameCell, dateCell, actionCell);
+    completedTableBody.append(row);
+  });
+
+  if (!completedTasks().length) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 4;
+    cell.className = "empty-state";
+    cell.textContent = "No completed tasks";
+    row.append(cell);
+    completedTableBody.append(row);
+  }
+}
+
 function render() {
-  taskCount.textContent = `${tasks.length} task${tasks.length === 1 ? "" : "s"}`;
+  const activeTotal = activeTasks().length;
+  const completedTotal = completedTasks().length;
+  taskCount.textContent = `${activeTotal} task${activeTotal === 1 ? "" : "s"}`;
+  completedCount.textContent = `${completedTotal} task${completedTotal === 1 ? "" : "s"}`;
   board.classList.toggle("reorganizing", reorganizing);
   reorganizeToggle.classList.toggle("active", reorganizing);
   reorganizeToggle.textContent = reorganizing ? "Done" : "Reorganize";
   renderBoard();
   renderTable();
+  renderCompletedTable();
   fillProjectSelect(tableProject, tableProject.value || projects[0]);
 }
 

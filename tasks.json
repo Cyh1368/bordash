@@ -4,16 +4,18 @@
     "name": "Review launch checklist",
     "project": "efe",
     "dueDate": "",
-    "done": false,
-    "order": 1
+    "done": true,
+    "order": 1,
+    "completedAt": "2026-05-23T02:50:39.465Z"
   },
   {
     "id": "mphpdqjc-o5hk0z",
     "name": "wegewgweef",
     "project": "efe",
     "dueDate": "2026-05-18",
-    "done": false,
-    "order": 2
+    "done": true,
+    "order": 2,
+    "completedAt": "2026-05-23T02:50:42.464Z"
   },
   {
     "id": "mphpd4b5-cypu4k",
@@ -32,27 +34,70 @@
     "order": 0
   },
   {
-    "id": "mphpm3la-tv6pi1",
-    "name": "wegewg",
-    "project": "Product",
-    "dueDate": "2026-05-20",
-    "done": false,
-    "order": 0
+    "id": "mphpna6e-0afwnt",
+    "name": "code",
+    "project": "Engineering",
+    "dueDate": "",
+    "done": true,
+    "order": 0,
+    "completedAt": "2026-05-23T02:49:10.982Z"
   },
   {
     "id": "sample-3",
     "name": "Wire local JSON persistence",
     "project": "Product",
     "dueDate": "2026-05-21",
-    "done": false,
+    "done": true,
+    "order": 0,
+    "completedAt": "2026-05-23T02:49:07.766Z"
+  },
+  {
+    "id": "mphpm3la-tv6pi1",
+    "name": "wegewg",
+    "project": "Product",
+    "dueDate": "2026-05-20",
+    "done": true,
     "order": 1
   },
   {
-    "id": "mphpna6e-0afwnt",
-    "name": "code",
+    "id": "mphr4f5h-jfp3al",
+    "name": "qgweg",
+    "project": "Engineering",
+    "dueDate": "",
+    "done": true,
+    "order": 7,
+    "completedAt": "2026-05-23T02:51:12.541Z"
+  },
+  {
+    "id": "mphr4l65-b16068",
+    "name": "wgewg",
     "project": "Engineering",
     "dueDate": "",
     "done": false,
-    "order": 0
+    "order": 8
+  },
+  {
+    "id": "mphr4mpg-v656oa",
+    "name": "wgweg",
+    "project": "Research",
+    "dueDate": "",
+    "done": false,
+    "order": 9
+  },
+  {
+    "id": "mphr4o39-ieq5il",
+    "name": "wegwegweg",
+    "project": "Research",
+    "dueDate": "",
+    "done": false,
+    "order": 10
+  },
+  {
+    "id": "mphr4p38-mx9tit",
+    "name": "wegweg",
+    "project": "Research",
+    "dueDate": "",
+    "done": false,
+    "order": 11
   }
 ]
