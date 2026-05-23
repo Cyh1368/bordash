@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bordash Task Dashboard</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>Bordash</h1>
+        </div>
+        <form id="project-add" class="project-manager" autocomplete="off">
+          <input id="new-project" name="project" type="text" placeholder="Add project" required>
+          <button type="submit">Add project</button>
+        </form>
+      </header>
+
+      <section class="dashboard" aria-label="Project dashboard">
+        <div class="section-heading">
+          <h2>Dashboard</h2>
+          <div class="dashboard-actions">
+            <span id="task-count">0 tasks</span>
+            <button id="reorganize-toggle" type="button" class="secondary-button">Reorganize</button>
+          </div>
+        </div>
+        <div id="project-board" class="project-board"></div>
+      </section>
+
+      <section class="task-table-section" aria-label="All tasks">
+        <div class="section-heading">
+          <h2>All tasks</h2>
+          <div class="sort-controls" aria-label="Sort tasks">
+            <button type="button" class="sort-button active" data-sort="project">Project</button>
+            <button type="button" class="sort-button" data-sort="name">Name</button>
+            <button type="button" class="sort-button" data-sort="dueDate">Due date</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Task</th>
+                <th>Due</th>
+                <th></th>
+              </tr>
+              <tr>
+                <th class="entry-label">New</th>
+                <th>
+                  <div class="task-entry">
+                    <input id="table-task" type="text" placeholder="Task name" required>
+                    <select id="table-project" aria-label="Project"></select>
+                  </div>
+                </th>
+                <th><input id="table-date" type="date" aria-label="Due date"></th>
+                <th><button id="table-add" type="button">Add</button></th>
+              </tr>
+            </thead>
+            <tbody id="task-table"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <template id="project-template">
+      <article class="project-card">
+        <div class="project-head">
+          <button type="button" class="project-delete" aria-label="Delete project">X</button>
+          <div class="project-title">
+            <h3></h3>
+            <span></span>
+          </div>
+        </div>
+        <form class="project-add" autocomplete="off">
+          <input name="name" type="text" placeholder="Add task" required>
+          <input name="dueDate" type="date" aria-label="Due date">
+          <button type="submit">+</button>
+        </form>
+        <div class="project-list"></div>
+      </article>
+    </template>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
