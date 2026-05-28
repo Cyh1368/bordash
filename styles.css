@@ -372,6 +372,12 @@ tr.completing-exit {
   color: #071110;
 }
 
+.task-chip-content {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
 .task-title {
   overflow-wrap: anywhere;
   font-weight: 700;
@@ -401,12 +407,82 @@ tr.completing-exit {
 .task-date {
   color: var(--muted);
   font-size: 0.82rem;
-  text-align: right;
   white-space: nowrap;
 }
 
 .task-date.no-date {
   color: #6f7785;
+}
+
+.chip-date-control {
+  position: relative;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  place-items: center;
+}
+
+.chip-date-control input[type="date"] {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 28px;
+  max-width: 28px;
+  min-height: 28px;
+  height: 28px;
+  inline-size: 28px;
+  max-inline-size: 28px;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+  opacity: 0;
+  padding: 0;
+}
+
+.calendar-icon {
+  position: relative;
+  display: block;
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid var(--muted);
+  border-radius: 4px;
+  opacity: 0.82;
+  pointer-events: none;
+}
+
+.calendar-icon::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 0;
+  width: 100%;
+  border-top: 1.5px solid var(--muted);
+}
+
+.calendar-icon::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: 3px;
+  width: 9px;
+  height: 4px;
+  border-left: 1.5px solid var(--muted);
+  border-right: 1.5px solid var(--muted);
+}
+
+.chip-date-control:hover .calendar-icon,
+.chip-date-control:focus-within .calendar-icon {
+  border-color: var(--accent);
+  opacity: 1;
+}
+
+.chip-date-control:hover .calendar-icon::before,
+.chip-date-control:focus-within .calendar-icon::before,
+.chip-date-control:hover .calendar-icon::after,
+.chip-date-control:focus-within .calendar-icon::after {
+  border-color: var(--accent);
 }
 
 .task-table-section {
@@ -740,12 +816,15 @@ td:first-child .task-check {
     flex-basis: auto;
   }
 
+  .project-add button {
+    border-color: var(--accent);
+  }
+
   .task-chip {
-    grid-template-columns: 24px minmax(0, 1fr);
+    grid-template-columns: 24px minmax(0, 1fr) 28px;
   }
 
   .task-date {
-    grid-column: 2;
     text-align: left;
   }
 }

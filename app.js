@@ -309,11 +309,32 @@ function makeTaskChip(task) {
   check.setAttribute("aria-label", "Mark complete");
   check.addEventListener("click", () => completeTask(task.id));
 
+  const content = document.createElement("div");
+  content.className = "task-chip-content";
+
   const title = document.createElement("div");
   title.className = `task-title ${dateState(task.dueDate, task.done)}${task.done || completingTasks.has(task.id) ? " done" : ""}`;
   title.textContent = task.name;
+  content.append(title);
 
-  const date = makeDateLabel(task.dueDate, { blankWhenMissing: true });
+  if (task.dueDate) {
+    content.append(makeDateLabel(task.dueDate));
+  }
+
+  const dateControl = document.createElement("span");
+  dateControl.className = "chip-date-control";
+
+  const dateInput = document.createElement("input");
+  dateInput.type = "date";
+  dateInput.value = task.dueDate || "";
+  dateInput.setAttribute("aria-label", `Change due date for ${task.name}`);
+  dateInput.addEventListener("change", () => updateTask(task.id, { dueDate: dateInput.value }));
+
+  const calendar = document.createElement("span");
+  calendar.className = "calendar-icon";
+  calendar.setAttribute("aria-hidden", "true");
+
+  dateControl.append(dateInput, calendar);
 
   chip.addEventListener("dragstart", (event) => {
     if (completingTasks.has(task.id)) return;
@@ -325,7 +346,7 @@ function makeTaskChip(task) {
   chip.classList.toggle("completing-static", completingTasks.has(task.id));
   chip.classList.toggle("completing-exit", exitingTasks.has(task.id));
 
-  chip.append(check, title, date);
+  chip.append(check, content, dateControl);
   return chip;
 }
 
