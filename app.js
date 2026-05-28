@@ -12,6 +12,9 @@ const tableTask = document.querySelector("#table-task");
 const tableProject = document.querySelector("#table-project");
 const tableDate = document.querySelector("#table-date");
 const reorganizeToggle = document.querySelector("#reorganize-toggle");
+const reorganizeModal = document.querySelector("#reorganize-modal");
+const reorganizeClose = document.querySelector("#reorganize-close");
+const projectOrderList = document.querySelector("#project-order-list");
 
 let tasks = [];
 let projects = [];
@@ -20,6 +23,7 @@ let reorganizing = false;
 const completingTasks = new Set();
 const exitingTasks = new Set();
 const completionTimers = new Map();
+const deletingTasks = new Set();
 
 const defaultProjects = ["Product", "Design", "Engineering"];
 
@@ -198,9 +202,20 @@ async function moveTask(id, project, beforeId = "") {
 }
 
 async function deleteTask(id) {
+  if (deletingTasks.has(id)) return;
+  const removedTask = tasks.find((task) => task.id === id);
+  if (!removedTask) return;
+  deletingTasks.add(id);
+
+  animateTaskRemoval(id);
   tasks = tasks.filter((task) => task.id !== id);
   await saveTasks();
-  render();
+  window.setTimeout(() => {
+    deletingTasks.delete(id);
+    updateTaskSummary();
+    updateProjectSummary(removedTask.project);
+    updateEmptyStates();
+  }, 260);
 }
 
 async function deleteProject(project) {
@@ -317,23 +332,6 @@ function getDropTarget(list, y) {
   ).chip;
 }
 
-function getProjectDropTarget(x, y) {
-  const cards = [...board.querySelectorAll(".project-card:not(.project-dragging)")];
-  return cards.reduce(
-    (closest, card) => {
-      const box = card.getBoundingClientRect();
-      const rowOffset = y - box.top - box.height / 2;
-      const columnOffset = x - box.left - box.width / 2;
-      const offset = Math.abs(rowOffset) > box.height / 2 ? rowOffset : columnOffset;
-      if (offset < 0 && offset > closest.offset) {
-        return { offset, card };
-      }
-      return closest;
-    },
-    { offset: Number.NEGATIVE_INFINITY, card: null }
-  ).card;
-}
-
 function renderBoard() {
   board.replaceChildren();
 
@@ -351,7 +349,6 @@ function renderBoard() {
 
     heading.textContent = project;
     card.dataset.project = project;
-    card.draggable = reorganizing;
     count.textContent = `${projectTasks.length} task${projectTasks.length === 1 ? "" : "s"}`;
     projectTasks.forEach((task) => list.append(makeTaskChip(task)));
     deleteButton.addEventListener("click", () => deleteProject(project));
@@ -370,17 +367,6 @@ function renderBoard() {
       if (!name) return;
       await addTask({ name, project, dueDate: String(data.get("dueDate") || "") });
       form.reset();
-    });
-
-    card.addEventListener("dragstart", (event) => {
-      if (!reorganizing) return;
-      if (event.target.closest(".task-chip, input, button")) return;
-      card.classList.add("project-dragging");
-      event.dataTransfer.setData("application/x-project", project);
-      event.dataTransfer.effectAllowed = "move";
-    });
-    card.addEventListener("dragend", () => {
-      card.classList.remove("project-dragging");
     });
 
     list.addEventListener("dragover", (event) => {
@@ -407,30 +393,6 @@ function renderBoard() {
     board.append(clone);
   });
 }
-
-board.addEventListener("dragover", (event) => {
-  if (!reorganizing) return;
-  const project = [...event.dataTransfer.types].includes("application/x-project");
-  if (!project) return;
-  event.preventDefault();
-  const dragging = board.querySelector(".project-dragging");
-  const before = getProjectDropTarget(event.clientX, event.clientY);
-  if (!dragging) return;
-  if (before) {
-    board.insertBefore(dragging, before);
-  } else {
-    board.append(dragging);
-  }
-});
-
-board.addEventListener("drop", async (event) => {
-  if (!reorganizing) return;
-  const project = event.dataTransfer.getData("application/x-project");
-  if (!project) return;
-  event.preventDefault();
-  const before = getProjectDropTarget(event.clientX, event.clientY);
-  await moveProject(project, before?.dataset.project || "");
-});
 
 function renderTable() {
   tableBody.replaceChildren();
@@ -491,11 +453,63 @@ function renderTable() {
   }
 }
 
+function getOrderDropTarget(list, y) {
+  const items = [...list.querySelectorAll(".project-order-item:not(.dragging)")];
+  return items.reduce(
+    (closest, item) => {
+      const box = item.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) {
+        return { offset, item };
+      }
+      return closest;
+    },
+    { offset: Number.NEGATIVE_INFINITY, item: null }
+  ).item;
+}
+
+function renderProjectOrderModal() {
+  reorganizeModal.hidden = !reorganizing;
+  if (!reorganizing) {
+    projectOrderList.replaceChildren();
+    return;
+  }
+
+  projectOrderList.replaceChildren();
+  projects.forEach((project, index) => {
+    const item = document.createElement("div");
+    item.className = "project-order-item";
+    item.draggable = true;
+    item.dataset.project = project;
+
+    const handle = document.createElement("span");
+    handle.className = "project-order-handle";
+    handle.textContent = "=";
+    handle.setAttribute("aria-hidden", "true");
+
+    const name = document.createElement("span");
+    name.className = "project-order-name";
+    name.textContent = project;
+
+    item.append(handle, name);
+
+    item.addEventListener("dragstart", (event) => {
+      item.classList.add("dragging");
+      event.dataTransfer.setData("application/x-project", project);
+      event.dataTransfer.effectAllowed = "move";
+    });
+    item.addEventListener("dragend", () => item.classList.remove("dragging"));
+
+    projectOrderList.append(item);
+  });
+}
+
 function renderCompletedTable() {
   completedTableBody.replaceChildren();
 
   sortedCompletedTasks().forEach((task) => {
     const row = document.createElement("tr");
+    row.dataset.taskId = task.id;
 
     const statusCell = document.createElement("td");
     const check = document.createElement("button");
@@ -542,18 +556,101 @@ function renderCompletedTable() {
   }
 }
 
+function taskLabel(count) {
+  return `${count} task${count === 1 ? "" : "s"}`;
+}
+
+function updateTaskSummary() {
+  taskCount.textContent = taskLabel(activeTasks().length);
+  completedCount.textContent = taskLabel(completedTasks().length);
+}
+
+function updateProjectSummary(project) {
+  const normalized = normalizedProject(project);
+  const card = [...board.querySelectorAll(".project-card")].find((item) => item.dataset.project === normalized);
+  if (!card) return;
+  const count = tasks.filter((task) => !task.done && normalizedProject(task.project) === normalized).length;
+  const label = card.querySelector(".project-head span");
+  if (label) label.textContent = taskLabel(count);
+}
+
+function addTableEmptyState(body, message) {
+  if (body.children.length) return;
+  const row = document.createElement("tr");
+  const cell = document.createElement("td");
+  cell.colSpan = 4;
+  cell.className = "empty-state";
+  cell.textContent = message;
+  row.append(cell);
+  body.append(row);
+}
+
+function updateEmptyStates() {
+  projectNames().forEach((project) => {
+    const card = [...board.querySelectorAll(".project-card")].find((item) => item.dataset.project === project);
+    const list = card?.querySelector(".project-list");
+    if (!list || list.querySelector(".task-chip")) return;
+    if (!list.querySelector(".empty-state")) {
+      const empty = document.createElement("div");
+      empty.className = "empty-state";
+      empty.textContent = "Drop tasks here";
+      list.append(empty);
+    }
+  });
+  addTableEmptyState(tableBody, "No tasks yet");
+  addTableEmptyState(completedTableBody, "No completed tasks");
+}
+
+function animateTaskChipRemoval(chip) {
+  const height = chip.getBoundingClientRect().height;
+  chip.style.height = `${height}px`;
+  chip.style.minHeight = `${height}px`;
+  chip.style.overflow = "hidden";
+  window.requestAnimationFrame(() => {
+    chip.classList.add("task-removing");
+    chip.style.height = "0px";
+    chip.style.minHeight = "0px";
+  });
+  window.setTimeout(() => chip.remove(), 260);
+}
+
+function animateTaskRowRemoval(row) {
+  const height = row.getBoundingClientRect().height;
+  const placeholder = document.createElement("tr");
+  placeholder.className = "task-row-placeholder";
+  const cell = document.createElement("td");
+  cell.colSpan = row.children.length || 4;
+  const spacer = document.createElement("div");
+  spacer.className = "task-row-spacer";
+  spacer.style.height = `${height}px`;
+  cell.append(spacer);
+  placeholder.append(cell);
+  row.before(placeholder);
+  row.classList.add("task-removing");
+  window.setTimeout(() => row.remove(), 80);
+  window.requestAnimationFrame(() => {
+    spacer.style.height = "0px";
+  });
+  window.setTimeout(() => placeholder.remove(), 260);
+}
+
+function animateTaskRemoval(id) {
+  document.querySelectorAll(`.task-chip[data-task-id="${id}"]`).forEach(animateTaskChipRemoval);
+  document.querySelectorAll(`tr[data-task-id="${id}"]`).forEach(animateTaskRowRemoval);
+}
+
 function render() {
   const activeTotal = activeTasks().length;
   const completedTotal = completedTasks().length;
-  taskCount.textContent = `${activeTotal} task${activeTotal === 1 ? "" : "s"}`;
-  completedCount.textContent = `${completedTotal} task${completedTotal === 1 ? "" : "s"}`;
-  board.classList.toggle("reorganizing", reorganizing);
+  taskCount.textContent = taskLabel(activeTotal);
+  completedCount.textContent = taskLabel(completedTotal);
   reorganizeToggle.classList.toggle("active", reorganizing);
-  reorganizeToggle.textContent = reorganizing ? "Done" : "Reorganize";
+  reorganizeToggle.textContent = "Reorganize";
   renderBoard();
   renderTable();
   renderCompletedTable();
   fillProjectSelect(tableProject, tableProject.value || projects[0]);
+  renderProjectOrderModal();
 }
 
 projectAdd.addEventListener("submit", async (event) => {
@@ -583,8 +680,39 @@ tableAdd.addEventListener("click", async () => {
 });
 
 reorganizeToggle.addEventListener("click", () => {
-  reorganizing = !reorganizing;
+  reorganizing = true;
   render();
+});
+
+reorganizeClose.addEventListener("click", () => {
+  reorganizing = false;
+  render();
+});
+
+reorganizeModal.addEventListener("click", (event) => {
+  if (event.target !== reorganizeModal) return;
+  reorganizing = false;
+  render();
+});
+
+projectOrderList.addEventListener("dragover", (event) => {
+  event.preventDefault();
+  const dragging = projectOrderList.querySelector(".project-order-item.dragging");
+  const before = getOrderDropTarget(projectOrderList, event.clientY);
+  if (!dragging) return;
+  if (before) {
+    projectOrderList.insertBefore(dragging, before);
+  } else {
+    projectOrderList.append(dragging);
+  }
+});
+
+projectOrderList.addEventListener("drop", async (event) => {
+  event.preventDefault();
+  const project = event.dataTransfer.getData("application/x-project");
+  if (!project) return;
+  const before = getOrderDropTarget(projectOrderList, event.clientY);
+  await moveProject(project, before?.dataset.project || "");
 });
 
 loadTasks();

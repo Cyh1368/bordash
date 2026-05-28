@@ -86,6 +86,16 @@
           </div>
         </details>
       </section>
+
+      <div id="reorganize-modal" class="modal-backdrop" hidden>
+        <div class="project-order-dialog" role="dialog" aria-modal="true" aria-labelledby="project-order-title">
+          <div class="project-order-head">
+            <h2 id="project-order-title">Projects</h2>
+            <button id="reorganize-close" type="button" class="secondary-button">Done</button>
+          </div>
+          <div id="project-order-list" class="project-order-list"></div>
+        </div>
+      </div>
     </main>
 
     <template id="project-template">
