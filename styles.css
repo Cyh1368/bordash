@@ -114,6 +114,43 @@ input[type="date"] {
   inline-size: 100%;
   max-inline-size: 100%;
   min-inline-size: 0;
+  min-height: 40px;
+  line-height: 1.2;
+}
+
+.date-input-wrap {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.date-placeholder {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  max-width: calc(100% - 24px);
+  overflow: hidden;
+  color: var(--muted);
+  font: inherit;
+  line-height: 1;
+  opacity: 0.72;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+
+.date-input-wrap.has-value .date-placeholder {
+  opacity: 0;
+}
+
+.date-input-wrap:not(.has-value) input[type="date"]::-webkit-datetime-edit {
+  color: transparent;
+}
+
+.date-input-wrap.has-value input[type="date"]::-webkit-datetime-edit {
+  color: var(--ink);
 }
 
 button {

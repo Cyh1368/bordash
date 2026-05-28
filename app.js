@@ -26,6 +26,7 @@ const completionTimers = new Map();
 const deletingTasks = new Set();
 
 const defaultProjects = ["Product", "Design", "Engineering"];
+const datePlaceholder = "mm/dd/yyyy";
 
 function uid() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -56,6 +57,35 @@ function makeDateLabel(dueDate, options = {}) {
   date.className = `task-date${dueDate ? "" : " no-date"}`;
   date.textContent = dueDate ? formatDate(dueDate) : options.blankWhenMissing ? "" : "mm/dd/yyyy";
   return date;
+}
+
+function syncDateInputPlaceholder(input) {
+  const wrapper = input.closest(".date-input-wrap");
+  if (!wrapper) return;
+  wrapper.classList.toggle("has-value", Boolean(input.value));
+}
+
+function wrapDateInput(input) {
+  input.placeholder = datePlaceholder;
+  input.classList.add("date-control");
+  input.addEventListener("input", () => syncDateInputPlaceholder(input));
+  input.addEventListener("change", () => syncDateInputPlaceholder(input));
+
+  if (input.parentElement?.classList.contains("date-input-wrap")) {
+    syncDateInputPlaceholder(input);
+    return input.parentElement;
+  }
+
+  const wrapper = document.createElement("span");
+  wrapper.className = "date-input-wrap";
+  const placeholder = document.createElement("span");
+  placeholder.className = "date-placeholder";
+  placeholder.textContent = datePlaceholder;
+
+  input.replaceWith(wrapper);
+  wrapper.append(input, placeholder);
+  syncDateInputPlaceholder(input);
+  return wrapper;
 }
 
 function normalizedProject(project) {
@@ -351,6 +381,7 @@ function renderBoard() {
     card.dataset.project = project;
     count.textContent = `${projectTasks.length} task${projectTasks.length === 1 ? "" : "s"}`;
     projectTasks.forEach((task) => list.append(makeTaskChip(task)));
+    wrapDateInput(form.querySelector('input[name="dueDate"]'));
     deleteButton.addEventListener("click", () => deleteProject(project));
 
     if (!projectTasks.length) {
@@ -425,7 +456,7 @@ function renderTable() {
     dateInput.type = "date";
     dateInput.value = task.dueDate || "";
     dateInput.addEventListener("change", () => updateTask(task.id, { dueDate: dateInput.value }));
-    dateCell.append(dateInput);
+    dateCell.append(wrapDateInput(dateInput));
 
     const actionCell = document.createElement("td");
     const deleteButton = document.createElement("button");
@@ -715,4 +746,5 @@ projectOrderList.addEventListener("drop", async (event) => {
   await moveProject(project, before?.dataset.project || "");
 });
 
+wrapDateInput(tableDate);
 loadTasks();
