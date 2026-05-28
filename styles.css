@@ -83,6 +83,7 @@ h3 {
 input,
 select {
   width: 100%;
+  max-width: 100%;
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -105,6 +106,14 @@ input:focus,
 select:focus {
   border-color: transparent;
   box-shadow: 0 0 0 3px rgba(71, 194, 177, 0.18);
+}
+
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  inline-size: 100%;
+  max-inline-size: 100%;
+  min-inline-size: 0;
 }
 
 button {
