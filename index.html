@@ -18,6 +18,33 @@
         </form>
       </header>
 
+      <section class="transfer-section" aria-label="Transfer">
+        <div class="transfer-grid">
+          <div class="transfer-panel">
+            <div class="section-heading">
+              <h2>Files</h2>
+            </div>
+            <div id="drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Upload files, drop or click to browse">
+              <span class="drop-zone-icon">↑</span>
+              <span id="drop-zone-label" class="drop-zone-text">Drop files here or click to upload</span>
+              <span class="drop-zone-hint">Expires in 48 hours</span>
+            </div>
+            <input type="file" id="file-input" multiple style="display:none">
+            <ul id="file-list" class="file-list"></ul>
+          </div>
+          <div class="transfer-panel">
+            <div class="section-heading">
+              <h2>Text</h2>
+              <div class="transfer-text-actions">
+                <span id="text-save-status" class="save-status"></span>
+                <button id="text-delete" type="button" class="danger-button">Delete</button>
+              </div>
+            </div>
+            <textarea id="transfer-text" class="transfer-textarea" placeholder="Type or paste text here..." spellcheck="false"></textarea>
+          </div>
+        </div>
+      </section>
+
       <section class="dashboard" aria-label="Project dashboard">
         <div class="section-heading">
           <h2>Dashboard</h2>

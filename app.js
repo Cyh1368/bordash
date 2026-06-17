@@ -769,3 +769,182 @@ projectOrderList.addEventListener("drop", async (event) => {
 
 wrapDateInput(tableDate);
 loadTasks();
+
+// ── Transfer: Files ──────────────────────────────────────────────────────────
+
+let transferFiles = [];
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1048576).toFixed(1)} MB`;
+}
+
+function formatExpiry(expiresAt) {
+  const diff = new Date(expiresAt) - Date.now();
+  if (diff <= 0) return "Expired";
+  const totalMinutes = Math.floor(diff / 60000);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if (h >= 24) return `${Math.floor(h / 24)}d ${h % 24}h left`;
+  if (h > 0) return `${h}h ${m}m left`;
+  return `${m}m left`;
+}
+
+function fileExtLabel(name) {
+  const dot = name.lastIndexOf(".");
+  const ext = dot >= 0 ? name.slice(dot + 1) : "";
+  return ext.slice(0, 5) || "FILE";
+}
+
+function renderTransferFiles() {
+  const list = document.querySelector("#file-list");
+  list.replaceChildren();
+
+  if (!transferFiles.length) {
+    const li = document.createElement("li");
+    li.className = "file-empty";
+    li.textContent = "No files uploaded";
+    list.append(li);
+    return;
+  }
+
+  transferFiles.forEach((file) => {
+    const item = document.createElement("li");
+    item.className = "file-item";
+
+    const ext = document.createElement("div");
+    ext.className = "file-ext";
+    ext.textContent = fileExtLabel(file.name);
+
+    const info = document.createElement("div");
+    info.className = "file-info";
+
+    const link = document.createElement("a");
+    link.className = "file-name";
+    link.href = `/api/files/${file.id}/download`;
+    link.download = file.name;
+    link.textContent = file.name;
+
+    const meta = document.createElement("span");
+    meta.className = "file-meta";
+    meta.textContent = `${formatFileSize(file.size)} · ${formatExpiry(file.expiresAt)}`;
+
+    info.append(link, meta);
+
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "table-action";
+    del.textContent = "X";
+    del.setAttribute("aria-label", `Delete ${file.name}`);
+    del.addEventListener("click", () => deleteTransferFile(file.id));
+
+    item.append(ext, info, del);
+    list.append(item);
+  });
+}
+
+async function loadTransferFiles() {
+  const res = await fetch("/api/files");
+  transferFiles = await res.json();
+  renderTransferFiles();
+}
+
+async function uploadTransferFiles(files) {
+  const label = document.querySelector("#drop-zone-label");
+  const orig = label.textContent;
+  label.textContent = "Uploading…";
+
+  for (const file of files) {
+    const form = new FormData();
+    form.append("file", file);
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: form });
+      if (res.ok) {
+        transferFiles.push(await res.json());
+        renderTransferFiles();
+      }
+    } catch (err) {
+      console.error("Upload failed:", err);
+    }
+  }
+
+  label.textContent = orig;
+}
+
+async function deleteTransferFile(id) {
+  await fetch(`/api/files/${id}`, { method: "DELETE" });
+  transferFiles = transferFiles.filter((f) => f.id !== id);
+  renderTransferFiles();
+}
+
+(function initDropZone() {
+  const dropZone = document.querySelector("#drop-zone");
+  const fileInput = document.querySelector("#file-input");
+
+  dropZone.addEventListener("click", () => fileInput.click());
+  dropZone.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") fileInput.click();
+  });
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files.length) uploadTransferFiles([...fileInput.files]);
+    fileInput.value = "";
+  });
+  dropZone.addEventListener("dragover", (e) => {
+    if (!e.dataTransfer.types.includes("Files")) return;
+    e.preventDefault();
+    dropZone.classList.add("drag-over");
+  });
+  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+  dropZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropZone.classList.remove("drag-over");
+    const files = [...e.dataTransfer.files];
+    if (files.length) uploadTransferFiles(files);
+  });
+})();
+
+loadTransferFiles();
+
+// ── Transfer: Text ───────────────────────────────────────────────────────────
+
+let textSaveTimer = null;
+
+function setTextStatus(msg) {
+  document.querySelector("#text-save-status").textContent = msg;
+}
+
+async function saveTransferText(content) {
+  setTextStatus("Saving…");
+  await fetch("/api/text", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  });
+  setTextStatus("Saved");
+}
+
+async function deleteTransferText() {
+  clearTimeout(textSaveTimer);
+  await fetch("/api/text", { method: "DELETE" });
+  document.querySelector("#transfer-text").value = "";
+  setTextStatus("");
+}
+
+(async function initTransferText() {
+  const res = await fetch("/api/text");
+  const data = await res.json();
+  document.querySelector("#transfer-text").value = data.content || "";
+
+  document.querySelector("#transfer-text").addEventListener("input", (e) => {
+    setTextStatus("");
+    clearTimeout(textSaveTimer);
+    textSaveTimer = window.setTimeout(() => saveTransferText(e.target.value), 800);
+  });
+
+  document.querySelector("#text-delete").addEventListener("click", () => {
+    const textarea = document.querySelector("#transfer-text");
+    if (textarea.value && !window.confirm("Clear the saved text?")) return;
+    deleteTransferText();
+  });
+})();
