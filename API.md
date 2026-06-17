@@ -147,6 +147,84 @@ curl -X POST http://127.0.0.1:8000/api/tasks/add \
 
 ---
 
+### Add a project
+
+```
+POST /api/projects/add
+Content-Type: application/json
+```
+
+Creates a new project. If a project with the same name already exists, it is returned unchanged (idempotent).
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Project name |
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/projects/add \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Infrastructure"}'
+```
+
+**Example response:**
+
+```json
+{
+  "name": "Infrastructure",
+  "projects": ["Product", "Engineering", "Research", "Design", "Infrastructure"]
+}
+```
+
+**Error responses:**
+
+- `400 Bad Request` — missing or empty `name`, or invalid JSON
+
+---
+
+### Rename a task
+
+```
+POST /api/tasks/{id}/rename
+Content-Type: application/json
+```
+
+Updates the name of an existing task. Returns the updated task object.
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | New task name |
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/tasks/f47ac10b-58cc-4372-a567-0e02b2c3d479/rename \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Deploy to production"}'
+```
+
+**Example response:**
+
+```json
+{
+  "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "name": "Deploy to production",
+  "project": "Engineering",
+  "dueDate": "2026-06-20",
+  "done": false,
+  "completedAt": "",
+  "order": 12
+}
+```
+
+**Error responses:**
+
+- `400 Bad Request` — missing or empty `name`, or invalid JSON
+- `404 Not Found` — no task with that id
+
+---
+
 ### Mark a task as complete
 
 ```

@@ -272,6 +272,25 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({"ok": True})
             return
 
+        if parsed_path == "/api/projects/add":
+            length = int(self.headers.get("Content-Length", "0"))
+            raw = self.rfile.read(length)
+            try:
+                payload = json.loads(raw.decode("utf-8"))
+            except (json.JSONDecodeError, ValueError):
+                self.send_error(400, "Invalid JSON")
+                return
+            name = str(payload.get("name", "")).strip()
+            if not name:
+                self.send_error(400, "name is required")
+                return
+            projects = read_projects()
+            if name not in projects:
+                projects.append(name)
+                write_projects(projects)
+            self.send_json({"name": name, "projects": projects})
+            return
+
         if parsed_path == "/api/tasks/add":
             length = int(self.headers.get("Content-Length", "0"))
             raw = self.rfile.read(length)
@@ -301,6 +320,32 @@ class Handler(BaseHTTPRequestHandler):
                 "completedAt": "",
             }
             tasks.append(task)
+            write_tasks(tasks)
+            self.send_json(task)
+            return
+
+        if parsed_path.startswith("/api/tasks/") and parsed_path.endswith("/rename"):
+            task_id = parsed_path[len("/api/tasks/"):-len("/rename")]
+            if not task_id:
+                self.send_error(400, "Missing task id")
+                return
+            length = int(self.headers.get("Content-Length", "0"))
+            raw = self.rfile.read(length)
+            try:
+                payload = json.loads(raw.decode("utf-8"))
+            except (json.JSONDecodeError, ValueError):
+                self.send_error(400, "Invalid JSON")
+                return
+            new_name = str(payload.get("name", "")).strip()
+            if not new_name:
+                self.send_error(400, "name is required")
+                return
+            tasks = read_tasks()
+            task = next((t for t in tasks if t["id"] == task_id), None)
+            if not task:
+                self.send_error(404, "Task not found")
+                return
+            task["name"] = new_name
             write_tasks(tasks)
             self.send_json(task)
             return
