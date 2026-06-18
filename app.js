@@ -114,7 +114,7 @@ async function loadTasks() {
 }
 
 async function saveTasks() {
-  await fetch("/api/tasks", {
+  await fetch("/api/internal/tasks", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(tasks),
@@ -122,7 +122,7 @@ async function saveTasks() {
 }
 
 async function saveProjects() {
-  await fetch("/api/projects", {
+  await fetch("/api/internal/projects", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(projects),

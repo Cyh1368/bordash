@@ -215,7 +215,11 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         parsed_path = urllib.parse.urlparse(self.path).path
 
-        if parsed_path in ("/api/tasks", "/api/projects"):
+        if parsed_path == "/api/tasks":
+            self.send_error(405, "Use POST /api/tasks/add to add a task")
+            return
+
+        if parsed_path in ("/api/internal/tasks", "/api/internal/projects"):
             length = int(self.headers.get("Content-Length", "0"))
             raw = self.rfile.read(length)
             try:
@@ -226,7 +230,7 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(payload, list):
                 self.send_error(400, "Expected a list")
                 return
-            if parsed_path == "/api/tasks":
+            if parsed_path == "/api/internal/tasks":
                 write_tasks(payload)
             else:
                 write_projects(payload)

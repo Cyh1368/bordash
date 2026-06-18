@@ -6,6 +6,8 @@ Local HTTP API for reading and managing the to-do list programmatically.
 **Format:** JSON (`Content-Type: application/json`)  
 **Auth:** None — local server only
 
+> **IMPORTANT for agents:** Never call `POST /api/tasks` or `POST /api/projects` directly — those are internal endpoints used by the browser UI that **overwrite the entire task/project list**. Always use the specific action endpoints below (`/api/tasks/add`, `/api/tasks/{id}/rename`, etc.). Calling the wrong endpoint will wipe all existing data.
+
 ---
 
 ## Task object
