@@ -381,6 +381,20 @@ class Handler(BaseHTTPRequestHandler):
     def do_DELETE(self):
         parsed_path = urllib.parse.urlparse(self.path).path
 
+        if parsed_path.startswith("/api/tasks/"):
+            task_id = parsed_path[len("/api/tasks/"):]
+            if not task_id:
+                self.send_error(400, "Missing task id")
+                return
+            tasks = read_tasks()
+            task = next((t for t in tasks if t["id"] == task_id), None)
+            if not task:
+                self.send_error(404, "Task not found")
+                return
+            write_tasks([t for t in tasks if t["id"] != task_id])
+            self.send_json({"ok": True})
+            return
+
         if parsed_path.startswith("/api/files/"):
             file_id = parsed_path[len("/api/files/"):]
             if not file_id:
